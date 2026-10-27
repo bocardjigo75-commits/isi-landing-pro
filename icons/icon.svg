@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e3a8a"/>
+      <stop offset="50%" stop-color="#1e40af"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="bubble" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+  
+  <!-- Machine à laver / Linge -->
+  <rect x="106" y="86" width="300" height="340" rx="36" fill="#0f172a" stroke="#38bdf8" stroke-width="14"/>
+  <circle cx="166" cy="146" r="16" fill="#38bdf8"/>
+  <rect x="220" y="136" width="140" height="20" rx="10" fill="#334155"/>
+  
+  <!-- Hublot rond -->
+  <circle cx="256" cy="276" r="95" fill="#1e293b" stroke="#38bdf8" stroke-width="12"/>
+  <circle cx="256" cy="276" r="72" fill="#0284c7" opacity="0.65"/>
+  <path d="M 210 276 Q 256 240 302 276 Q 256 312 210 276" fill="#ffffff" opacity="0.8"/>
+  
+  <!-- Étoiles de propreté -->
+  <path d="M 370 70 L 380 95 L 405 105 L 380 115 L 370 140 L 360 115 L 335 105 L 360 95 Z" fill="#facc15"/>
+  <path d="M 120 370 L 126 385 L 141 391 L 126 397 L 120 412 L 114 397 L 99 391 L 114 385 Z" fill="#38bdf8"/>
+</svg>

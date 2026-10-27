@@ -1,0 +1,87 @@
+/* Styles personnalisés PressingPro - Mobile First & Atelier */
+
+:root {
+  --primary-blue: #1e40af;
+  --accent-cyan: #06b6d4;
+  --success-green: #10b981;
+  --danger-rose: #f43f5e;
+  --warning-amber: #f59e0b;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+/* Scrollbars modernes */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+/* Gros boutons tactiles pour comptoir/atelier */
+.btn-touch {
+  min-height: 52px;
+  touch-action: manipulation;
+  transition: transform 0.08s ease, filter 0.15s ease;
+}
+.btn-touch:active {
+  transform: scale(0.97);
+}
+
+/* Animation d'onde vocale quand le micro écoute */
+@keyframes voice-wave {
+  0% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.18); opacity: 0.4; }
+  100% { transform: scale(1); opacity: 0.9; }
+}
+
+.mic-recording-pulse {
+  animation: voice-wave 1.3s infinite ease-in-out;
+}
+
+/* Badges clignotants pour alertes critiques */
+@keyframes critical-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+.pulse-late {
+  animation: critical-pulse 1.8s infinite ease-in-out;
+}
+
+/* Styles d'impression pour ticket de caisse / reçu 80mm */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-receipt, #printable-receipt * {
+    visibility: visible;
+  }
+  #printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    padding: 4mm !important;
+    background: white !important;
+    color: black !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+    font-family: monospace, monospace !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

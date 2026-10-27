@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>MF Clean - Pressing Pro Sénégal</title>
+  <meta name="description" content="Application de gestion de pressing pensée pour mobile et atelier au Sénégal">
+  <meta name="theme-color" content="#1e40af">
+  <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
+  <link rel="apple-touch-icon" href="icons/icon.svg">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/styles.css">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            senegal: {
+              green: '#00853f',
+              yellow: '#fdef42',
+              red: '#e31b23'
+            },
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
+
+  <!-- En-tête Principal de l'Application -->
+  <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-3 py-2.5 sm:px-6">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-2">
+      
+      <!-- Logo et Identité du Pressing -->
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 to-cyan-500 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white font-black text-xl">
+          🧺
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-white" id="header-pressing-name">MF Clean</h1>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30">Pilote Dakar</span>
+          </div>
+          <p class="text-[11px] text-slate-400 font-medium truncate max-w-[150px] sm:max-w-xs">Gestion de pressing v1.0</p>
+        </div>
+      </div>
+
+      <!-- Actions Rapides & Switcher de Rôle -->
+      <div class="flex items-center gap-2">
+        <!-- Bouton Rôle Actif -->
+        <button id="btn-role-switch" onclick="appUI.openRoleModal()" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition">
+          <i data-lucide="user-check" class="w-3.5 h-3.5 text-blue-400"></i>
+          <span id="header-role-label">Propriétaire</span>
+          <i data-lucide="chevron-down" class="w-3 h-3 text-slate-400"></i>
+        </button>
+
+        <!-- Cloche Alertes Retards -->
+        <button id="btn-header-alerts" onclick="appUI.switchTab('commandes', 'urgences')" class="relative p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Commandes à surveiller">
+          <i data-lucide="bell" class="w-4 h-4"></i>
+          <span id="header-alert-badge" class="hidden absolute -top-1 -right-1 px-1.5 py-0.2 bg-rose-500 text-white text-[10px] font-black rounded-full shadow-lg">0</span>
+        </button>
+
+        <!-- Menu Réglages / Sauvegarde -->
+        <button onclick="appUI.openSettingsModal()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition" title="Paramètres et Sauvegardes">
+          <i data-lucide="settings" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- BANNIÈRE D'ALERTE VISIBLE EN HAUT (Section 4.5 du Cahier des charges) -->
+  <div id="top-alert-banner" class="hidden bg-gradient-to-r from-rose-900/90 via-amber-900/80 to-slate-900 border-b border-rose-500/40 px-4 py-2 text-xs font-medium text-white flex items-center justify-between shadow-md">
+    <div class="flex items-center gap-2 truncate">
+      <span class="flex h-2.5 w-2.5 relative">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
+      </span>
+      <span id="top-alert-text">Attention : commandes en retard ou à rendre aujourd'hui !</span>
+    </div>
+    <button onclick="appUI.switchTab('commandes', 'urgences')" class="shrink-0 ml-2 px-2.5 py-1 bg-white/20 hover:bg-white/30 text-white rounded font-bold transition">
+      Voir les urgences →
+    </button>
+  </div>
+
+  <!-- Contenu Principal avec Switcher d'Onglets -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-6 pb-24 sm:pb-8">
+
+    <!-- Onglet 1: TABLEAU DE BORD (Propriétaire / Super Admin) -->
+    <section id="tab-dashboard" class="tab-content space-y-5">
+      <!-- En-tête Dashboard & Filtre de période -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+            <i data-lucide="layout-dashboard" class="w-6 h-6 text-blue-400"></i>
+            Tableau de Bord
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-400">Suivi financier et performance en temps réel de MF Clean</p>
+        </div>
+
+        <!-- Filtre Période : Jour, 7j, 28j, Tout (Section 4.1) -->
+        <div class="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-medium">
+          <button onclick="appUI.setPeriod('today')" id="btn-period-today" class="px-3 py-1.5 rounded-lg transition text-slate-400 hover:text-white">Aujourd'hui</button>
+          <button onclick="appUI.setPeriod('7j')" id="btn-period-7j" class="px-3 py-1.5 rounded-lg transition bg-blue-600 text-white font-bold shadow">7 derniers jours</button>
+          <button onclick="appUI.setPeriod('28j')" id="btn-period-28j" class="px-3 py-1.5 rounded-lg transition text-slate-400 hover:text-white">28 jours</button>
+          <button onclick="appUI.setPeriod('all')" id="btn-period-all" class="px-3 py-1.5 rounded-lg transition text-slate-400 hover:text-white">Tout</button>
+        </div>
+      </div>
+
+      <!-- Alerte de restriction de rôle si Employé -->
+      <div id="employee-dashboard-lock" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center space-y-3">
+        <div class="w-14 h-14 mx-auto rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center">
+          <i data-lucide="shield-alert" class="w-8 h-8"></i>
+        </div>
+        <h3 class="text-lg font-bold text-white">Espace Financier Réservé au Propriétaire</h3>
+        <p class="text-sm text-slate-400 max-w-md mx-auto">
+          Conformément au cahier des charges (Règle 5), les employés ont un accès dédié au comptoir et à l'atelier sans visibilité sur les revenus, dépenses et bénéfices.
+        </p>
+        <button onclick="appUI.switchTab('caisse')" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-sm transition">
+          Aller au comptoir de saisie →
+        </button>
+      </div>
+
+      <!-- Contenu Dashboard Propriétaire -->
+      <div id="owner-dashboard-content" class="space-y-5">
+        
+        <!-- BÉNÉFICE EN GRAND AVEC LA MARGE (Section 4.1) -->
+        <div class="bg-gradient-to-br from-blue-950 via-slate-900 to-slate-900 border border-blue-500/30 rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
+          <div class="absolute -right-8 -bottom-8 w-44 h-44 bg-blue-600/10 rounded-full blur-2xl"></div>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <span class="text-xs uppercase tracking-wider font-semibold text-blue-400">Bénéfice Net Réalisé (Période)</span>
+              <div class="flex items-baseline gap-3 mt-1">
+                <span id="dash-benefice-net" class="text-3xl sm:text-4xl font-black text-white">0 FCFA</span>
+                <span id="dash-marge-badge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Marge: 0%</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Calculé selon la Règle 5 : Revenus encaissés − Dépenses réelles</p>
+            </div>
+            
+            <div class="flex items-center gap-3">
+              <button onclick="appUI.switchTab('caisse')" class="btn-touch px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 text-sm flex items-center gap-2">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                Nouvelle Facture
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI Cards : Revenus, Dépenses, Commandes, Panier Moyen -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+            <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+              <span>Revenus Encaissés</span>
+              <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+            <div id="dash-revenus" class="text-lg sm:text-xl font-bold text-emerald-400">0 FCFA</div>
+            <span class="text-[10px] text-slate-500">Comptabilisé à l'encaissement</span>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+            <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+              <span>Dépenses Totales</span>
+              <i data-lucide="trending-down" class="w-4 h-4 text-rose-400"></i>
+            </div>
+            <div id="dash-depenses" class="text-lg sm:text-xl font-bold text-rose-400">0 FCFA</div>
+            <span class="text-[10px] text-slate-500">Lessive, Senelec, SénEau...</span>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+            <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+              <span>Commandes</span>
+              <i data-lucide="shopping-bag" class="w-4 h-4 text-blue-400"></i>
+            </div>
+            <div id="dash-nb-commandes" class="text-lg sm:text-xl font-bold text-white">0</div>
+            <span class="text-[10px] text-slate-500">Sur la période sélectionnée</span>
+          </div>
+
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl">
+            <div class="flex items-center justify-between text-slate-400 text-xs mb-1">
+              <span>Panier Moyen</span>
+              <i data-lucide="calculator" class="w-4 h-4 text-cyan-400"></i>
+            </div>
+            <div id="dash-panier-moyen" class="text-lg sm:text-xl font-bold text-cyan-400">0 FCFA</div>
+            <span class="text-[10px] text-slate-500">Par commande payée</span>
+          </div>
+        </div>
+
+        <!-- Compteurs État de l'Atelier : En cours, Prêtes, Impayées -->
+        <div class="grid grid-cols-3 gap-3">
+          <div onclick="appUI.switchTab('commandes', 'en_cours')" class="cursor-pointer bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-blue-500/40 p-3.5 rounded-xl transition text-center">
+            <span class="text-xs text-slate-400">En cours</span>
+            <div id="dash-count-en-cours" class="text-2xl font-black text-blue-400 my-0.5">0</div>
+            <span class="text-[10px] text-slate-500">À l'atelier</span>
+          </div>
+
+          <div onclick="appUI.switchTab('commandes', 'prete')" class="cursor-pointer bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 p-3.5 rounded-xl transition text-center">
+            <span class="text-xs text-slate-400">Prêtes</span>
+            <div id="dash-count-pretes" class="text-2xl font-black text-emerald-400 my-0.5">0</div>
+            <span class="text-[10px] text-slate-500">Au comptoir</span>
+          </div>
+
+          <div onclick="appUI.switchTab('commandes', 'impayee')" class="cursor-pointer bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-amber-500/40 p-3.5 rounded-xl transition text-center">
+            <span class="text-xs text-slate-400">Impayées</span>
+            <div id="dash-count-impayees" class="text-2xl font-black text-amber-400 my-0.5">0</div>
+            <span id="dash-total-impayes" class="text-[10px] text-amber-400/80 font-semibold truncate block">0 FCFA</span>
+          </div>
+        </div>
+
+        <!-- Graphique des Revenus et Dépenses (Section 4.1) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="text-sm font-bold text-white">Évolution : Revenus vs Dépenses</h3>
+              <p class="text-xs text-slate-400">Aperçu quotidien des 7 derniers jours</p>
+            </div>
+            <div class="flex items-center gap-3 text-xs">
+              <span class="flex items-center gap-1.5 text-emerald-400 font-semibold"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> Revenus</span>
+              <span class="flex items-center gap-1.5 text-rose-400 font-semibold"><span class="w-3 h-3 rounded-full bg-rose-500"></span> Dépenses</span>
+            </div>
+          </div>
+          <!-- Canvas Graphique interactif léger -->
+          <div class="w-full h-56 relative">
+            <canvas id="financialChart" class="w-full h-full"></canvas>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Onglet 2: CAISSE & FACTURATION RAPIDE (Section 4.2 & 4.4) -->
+    <section id="tab-caisse" class="tab-content hidden space-y-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+            <i data-lucide="receipt" class="w-6 h-6 text-blue-400"></i>
+            Création de Facture & Commande
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-400">Saisie ultra-rapide à la voix (Français / Wolof) ou au clavier</p>
+        </div>
+      </div>
+
+      <!-- BLOC ASSISTANT VOCAL (Section 4.4) -->
+      <div class="bg-gradient-to-r from-blue-950/80 via-slate-900 to-indigo-950/80 border border-blue-500/40 rounded-2xl p-4 sm:p-5 shadow-lg">
+        <div class="flex flex-col sm:flex-row items-center gap-4">
+          
+          <!-- Gros Bouton Micro Tactile -->
+          <button id="btn-voice-record" onclick="appUI.toggleVoiceRecognition()" class="btn-touch w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white flex flex-col items-center justify-center shadow-lg shadow-blue-500/30 transition shrink-0 relative">
+            <i data-lucide="mic" id="voice-mic-icon" class="w-7 h-7 sm:w-9 sm:h-9"></i>
+            <span id="voice-btn-label" class="text-[10px] font-bold mt-1">Parler</span>
+            <div id="mic-pulse-ring" class="hidden absolute inset-0 rounded-2xl border-2 border-cyan-400 mic-recording-pulse"></div>
+          </button>
+
+          <!-- Zone de dictée & Analyse NLU -->
+          <div class="flex-1 w-full space-y-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-blue-400 flex items-center gap-1.5">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                Assistant Vocal Bilingue (Français & Wolof)
+              </span>
+              <span id="voice-status-indicator" class="text-[11px] text-slate-400">Prêt à écouter</span>
+            </div>
+
+            <div class="relative">
+              <input type="text" id="voice-input-text" placeholder="Ex: Facture pour Awa Diop, ñaari costumes ak 3 kilos de lavage et repassage express" 
+                class="w-full bg-slate-950 border border-slate-700 focus:border-blue-500 rounded-xl px-3.5 py-3 text-sm text-white placeholder-slate-500 focus:outline-none transition">
+              <button onclick="appUI.processVoiceText()" class="absolute right-2 top-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition">
+                Analyser
+              </button>
+            </div>
+
+            <!-- Suggestions de test rapide en 1 clic -->
+            <div class="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
+              <span class="font-medium text-slate-500">Exemples en Wolof/FR :</span>
+              <button onclick="appUI.setVoiceDemo('Facture pour Awa Diop, ñaari costumes ak bénn grand boubou')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                🗣️ "ñaari costumes ak bénn boubou"
+              </button>
+              <button onclick="appUI.setVoiceDemo('Facture pour Modou Fall, 4 kilos de lavage et repassage express')" class="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700">
+                🗣️ "4 kilos lavage repassage express"
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- FORMULAIRE DE SAISIE DE COMMANDE -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        
+        <!-- Colonne 1 & 2 : Client & Sélection tactile des articles -->
+        <div class="lg:col-span-2 space-y-4">
+          
+          <!-- Fiche Client & Téléphone -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              <i data-lucide="user" class="w-4 h-4 text-blue-400"></i>
+              Informations du Client
+            </h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Nom complet ou Entreprise</label>
+                <input type="text" id="order-client-name" list="clients-datalist" placeholder="Ex: Awa Diop" 
+                  class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                <datalist id="clients-datalist"></datalist>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Téléphone WhatsApp (+221)</label>
+                <input type="tel" id="order-client-phone" placeholder="77 450 12 34" 
+                  class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+              </div>
+            </div>
+          </div>
+
+          <!-- Date de Retrait Express (Section 4.2) -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-white flex items-center gap-1.5">
+                <i data-lucide="calendar" class="w-4 h-4 text-blue-400"></i>
+                Date de Retrait Prévue :
+              </label>
+              <span id="selected-retrait-date-display" class="text-xs font-bold text-cyan-400">Dans 2 jours</span>
+            </div>
+            
+            <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 pt-1">
+              <button type="button" onclick="appUI.setRetraitOffset(0)" class="btn-retrait-option px-2.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" data-offset="0">Aujourd'hui</button>
+              <button type="button" onclick="appUI.setRetraitOffset(1)" class="btn-retrait-option px-2.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" data-offset="1">Demain</button>
+              <button type="button" onclick="appUI.setRetraitOffset(2)" class="btn-retrait-option px-2.5 py-2 rounded-xl text-xs font-semibold bg-blue-600 text-white border border-blue-500 transition shadow" data-offset="2">Dans 2 jours</button>
+              <button type="button" onclick="appUI.setRetraitOffset(3)" class="btn-retrait-option px-2.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" data-offset="3">Dans 3 jours</button>
+              <button type="button" onclick="appUI.setRetraitOffset(5)" class="btn-retrait-option px-2.5 py-2 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" data-offset="5">Dans 5 jours</button>
+            </div>
+          </div>
+
+          <!-- Grille Tactile des Tarifs MF Clean (Section 4.3) -->
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <i data-lucide="tag" class="w-4 h-4 text-blue-400"></i>
+                Sélection des Prestations (Tarifs MF Clean)
+              </h3>
+              <span class="text-xs text-slate-400">Touchez les boutons + / −</span>
+            </div>
+
+            <!-- Grille dynamique générée par JS -->
+            <div id="services-touch-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
+          </div>
+
+        </div>
+
+        <!-- Colonne 3 : Récapitulatif, Express, Encaisser & Valider -->
+        <div class="space-y-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 sticky top-20 shadow-xl">
+            <h3 class="text-sm font-bold text-white border-b border-slate-800 pb-2 flex items-center justify-between">
+              <span>Récapitulatif Commande</span>
+              <span id="order-items-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-400">0 article</span>
+            </h3>
+
+            <!-- Liste des articles choisis -->
+            <div id="order-summary-list" class="space-y-2 min-h-[100px] max-h-56 overflow-y-auto text-xs text-slate-300">
+              <p class="text-slate-500 italic text-center py-6">Aucun article sélectionné. Touchez un service ou utilisez l'assistant vocal.</p>
+            </div>
+
+            <!-- Option Supplément Express (Section 4.2 & 4.3) -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+              <div>
+                <span class="text-xs font-bold text-white flex items-center gap-1">
+                  ⚡ Option Express
+                </span>
+                <span class="text-[10px] text-amber-400">+<span id="order-express-rate">30</span>% sur la commande</span>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="order-express-toggle" onchange="appUI.toggleExpress()" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+              </label>
+            </div>
+
+            <!-- Totaux -->
+            <div class="space-y-1.5 border-t border-slate-800 pt-3 text-xs">
+              <div class="flex justify-between text-slate-400">
+                <span>Sous-total</span>
+                <span id="order-subtotal">0 FCFA</span>
+              </div>
+              <div id="order-express-row" class="hidden justify-between text-amber-400 font-semibold">
+                <span>Supplément Express</span>
+                <span id="order-express-amount">+0 FCFA</span>
+              </div>
+              <div class="flex justify-between text-base font-black text-white pt-2 border-t border-slate-800">
+                <span>Total Net</span>
+                <span id="order-total" class="text-emerald-400 text-lg">0 FCFA</span>
+              </div>
+            </div>
+
+            <!-- Choix du Statut Paiement (Section 4.2) -->
+            <div class="space-y-1.5">
+              <label class="block text-xs font-medium text-slate-400">Règlement :</label>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <button type="button" onclick="appUI.setPaymentStatus('payee')" id="btn-pay-now" class="py-2.5 rounded-xl font-bold bg-emerald-600 text-white border border-emerald-500 transition shadow">
+                  ✅ Payée
+                </button>
+                <button type="button" onclick="appUI.setPaymentStatus('impayee')" id="btn-pay-later" class="py-2.5 rounded-xl font-bold bg-slate-800 text-slate-300 border border-slate-700 transition">
+                  ⏳ Impayée
+                </button>
+              </div>
+            </div>
+
+            <!-- Boutons d'Action Principale : Valider / Ticket / WhatsApp -->
+            <div class="space-y-2 pt-2">
+              <button onclick="appUI.submitOrder(false)" class="btn-touch w-full py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-black text-sm rounded-xl shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 transition">
+                <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                Enregistrer la Commande
+              </button>
+
+              <button onclick="appUI.submitOrder(true)" class="btn-touch w-full py-2.5 bg-emerald-700 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition">
+                <i data-lucide="send" class="w-4 h-4"></i>
+                Enregistrer + Envoyer Facture WhatsApp
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Onglet 3: COMMANDES & SUIVI DES ÉCHÉANCES (Section 4.2 & 4.5) -->
+    <section id="tab-commandes" class="tab-content hidden space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+            <i data-lucide="clipboard-list" class="w-6 h-6 text-blue-400"></i>
+            Commandes & Alertes Échéances
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-400">Tri par date de retrait avec alertes retards en temps réel</p>
+        </div>
+
+        <button onclick="appUI.switchTab('caisse')" class="btn-touch px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 self-start sm:self-auto">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          Nouvelle Commande
+        </button>
+      </div>
+
+      <!-- Filtres rapides de commandes (Section 4.5) -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        <button onclick="appUI.filterOrders('all')" id="filter-cmd-all" class="px-3.5 py-1.5 rounded-xl font-bold bg-blue-600 text-white transition shrink-0">Toutes</button>
+        <button onclick="appUI.filterOrders('urgences')" id="filter-cmd-urgences" class="px-3.5 py-1.5 rounded-xl font-bold bg-slate-800 text-rose-400 hover:bg-slate-700 transition shrink-0 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+          🚨 Urgences / Retards (<span id="count-filter-urgences">0</span>)
+        </button>
+        <button onclick="appUI.filterOrders('en_cours')" id="filter-cmd-en_cours" class="px-3.5 py-1.5 rounded-xl font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition shrink-0">En cours</button>
+        <button onclick="appUI.filterOrders('prete')" id="filter-cmd-prete" class="px-3.5 py-1.5 rounded-xl font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition shrink-0">Prêtes</button>
+        <button onclick="appUI.filterOrders('impayee')" id="filter-cmd-impayee" class="px-3.5 py-1.5 rounded-xl font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition shrink-0">Impayées</button>
+        <button onclick="appUI.filterOrders('retiree')" id="filter-cmd-retiree" class="px-3.5 py-1.5 rounded-xl font-semibold bg-slate-800 text-slate-300 hover:bg-slate-700 transition shrink-0">Retirées</button>
+      </div>
+
+      <!-- Liste des Cartes de Commande (Injectée par JS) -->
+      <div id="orders-list-container" class="space-y-3"></div>
+    </section>
+
+    <!-- Onglet 4: CLIENTS & FIDÉLITÉ (Section 4.6) -->
+    <section id="tab-clients" class="tab-content hidden space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+            <i data-lucide="users" class="w-6 h-6 text-blue-400"></i>
+            Clients & Fidélité
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-400">Classement des meilleurs clients et relance des inactifs (> 30 jours)</p>
+        </div>
+
+        <button onclick="appUI.openNewClientModal()" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 self-start sm:self-auto">
+          <i data-lucide="user-plus" class="w-4 h-4"></i>
+          Ajouter un Client
+        </button>
+      </div>
+
+      <!-- Recherche Client -->
+      <div class="relative">
+        <input type="text" id="clients-search-input" oninput="appUI.renderClients()" placeholder="Rechercher par nom, téléphone (+221), quartier..." 
+          class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+      </div>
+
+      <!-- Liste des Clients -->
+      <div id="clients-list-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+    </section>
+
+    <!-- Onglet 5: TECHNICIENS & RÉPARATION (Section 4.10) -->
+    <section id="tab-tech" class="tab-content hidden space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+            <i data-lucide="wrench" class="w-6 h-6 text-cyan-400"></i>
+            Module Techniciens : Réparation Machines
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-400">Mise en relation directe avec les réparateurs certifiés de Dakar</p>
+        </div>
+
+        <button onclick="appUI.openDemandeDepannageModal()" class="btn-touch px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-rose-600/30">
+          <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+          Signaler une Panne Machine
+        </button>
+      </div>
+
+      <!-- Demandes d'intervention en cours -->
+      <div id="demandes-depannage-container" class="space-y-3"></div>
+
+      <!-- Annuaire des Techniciens Agréés -->
+      <div class="space-y-3 pt-2">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i data-lucide="badge-check" class="w-5 h-5 text-emerald-400"></i>
+          Annuaire des Réparateurs Vérifiés
+        </h3>
+        <div id="techniciens-list-container" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+      </div>
+    </section>
+
+    <!-- Onglet 6: PLUS (TARIFS, DÉPENSES, STOCK, ANNONCES, ABONNEMENTS) -->
+    <section id="tab-plus" class="tab-content hidden space-y-6">
+      <div>
+        <h2 class="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
+          <i data-lucide="grid" class="w-6 h-6 text-blue-400"></i>
+          Gestion Complète & Paramètres
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-400">Tarifs, dépenses, gestion du stock, annonces et abonnements</p>
+      </div>
+
+      <!-- Sous-navigation onglet Plus -->
+      <div class="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto text-xs font-semibold">
+        <button onclick="appUI.switchPlusSubTab('tarifs')" id="subtab-btn-tarifs" class="px-3.5 py-1.5 rounded-lg bg-blue-600 text-white shrink-0">Tarifs du Pressing</button>
+        <button onclick="appUI.switchPlusSubTab('depenses')" id="subtab-btn-depenses" class="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white shrink-0">Dépenses</button>
+        <button onclick="appUI.switchPlusSubTab('stock')" id="subtab-btn-stock" class="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white shrink-0">Stock & Consommables</button>
+        <button onclick="appUI.switchPlusSubTab('annonces')" id="subtab-btn-annonces" class="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white shrink-0">Annonces & Promos</button>
+        <button onclick="appUI.switchPlusSubTab('abonnement')" id="subtab-btn-abonnement" class="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white shrink-0">Abonnement & Admin</button>
+      </div>
+
+      <!-- Sous-vue : TARIFS (Section 4.3) -->
+      <div id="subview-tarifs" class="space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-bold text-white">Tarifs des Services de MF Clean</h3>
+          <button onclick="appUI.openNewTarifModal()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            Ajouter un Service
+          </button>
+        </div>
+        <!-- Réglage du supplément express -->
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+          <div>
+            <h4 class="text-xs font-bold text-white">Supplément Express</h4>
+            <p class="text-[11px] text-slate-400">Pourcentage appliqué lorsque l'option express est cochée ou prononcée</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="number" id="input-express-pct" min="0" max="100" value="30" class="w-16 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-sm text-center text-white">
+            <span class="text-xs font-bold text-slate-300">%</span>
+            <button onclick="appUI.saveExpressPct()" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-white rounded-lg border border-slate-700">Enregistrer</button>
+          </div>
+        </div>
+        <div id="tarifs-table-container"></div>
+      </div>
+
+      <!-- Sous-vue : DÉPENSES (Section 4.7) -->
+      <div id="subview-depenses" class="hidden space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-bold text-white">Dépenses d'Exploitation</h3>
+          <button onclick="appUI.openNewDepenseModal()" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            Enregistrer une Dépense
+          </button>
+        </div>
+        <div id="depenses-list-container" class="space-y-2"></div>
+      </div>
+
+      <!-- Sous-vue : STOCK (Section 4.8) -->
+      <div id="subview-stock" class="hidden space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="text-base font-bold text-white">Stock & Produits Pressing</h3>
+            <p class="text-xs text-slate-400">Boutons tactiles rapides + / − et alertes de seuil</p>
+          </div>
+          <button onclick="appUI.openNewStockModal()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            Nouveau Produit
+          </button>
+        </div>
+        <div id="stock-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+      </div>
+
+      <!-- Sous-vue : ANNONCES & PROMOS (Section 4.9) -->
+      <div id="subview-annonces" class="hidden space-y-4">
+        <div>
+          <h3 class="text-base font-bold text-white">Diffuser une Annonce ou Promo</h3>
+          <p class="text-xs text-slate-400">Envoi en 1 clic à vos clients par WhatsApp</p>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 p-4 rounded-xl space-y-3">
+          <label class="block text-xs font-medium text-slate-400">Modèles prêts à modifier :</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <button onclick="appUI.setPromoTemplate('korite')" class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-blue-500 text-left">
+              <span class="font-bold text-white block">🌙 Promo Fêtes (Korité / Tabaski)</span>
+              <span class="text-slate-400 text-[11px]">-20% sur Boubous & Costumes</span>
+            </button>
+            <button onclick="appUI.setPromoTemplate('couette')" class="p-2.5 rounded-lg bg-slate-950 border border-slate-800 hover:border-blue-500 text-left">
+              <span class="font-bold text-white block">🛏️ Offre Couettes & Rideaux</span>
+              <span class="text-slate-400 text-[11px]">Nettoyage express à tarif doux</span>
+            </button>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-400 mb-1">Message personnalisé :</label>
+            <textarea id="promo-message-text" rows="3" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-blue-500"></textarea>
+          </div>
+          <button onclick="appUI.broadcastPromo()" class="btn-touch px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2">
+            <i data-lucide="send" class="w-4 h-4"></i>
+            Diffuser aux clients par WhatsApp
+          </button>
+        </div>
+      </div>
+
+      <!-- Sous-vue : ABONNEMENT & ESPACE FONDATEUR (Section 4.11 & 8) -->
+      <div id="subview-abonnement" class="hidden space-y-5">
+        <div class="bg-gradient-to-r from-blue-900/60 to-slate-900 border border-blue-500/40 p-5 rounded-2xl space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs uppercase font-bold text-blue-400">Formule MF Clean</span>
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Actif (Formule Pro)</span>
+          </div>
+          <h3 class="text-xl font-bold text-white">16 000 FCFA / mois</h3>
+          <p class="text-xs text-slate-300">Comprend : Tableau de bord, alertes employés, assistant vocal Wolof & FR, envoi factures WhatsApp, plusieurs comptes.</p>
+          <div class="flex items-center gap-2 pt-2">
+            <button onclick="alert('Pour renouveler votre abonnement, envoyez 16 000 FCFA par Wave au 77 123 45 67 (Fondateur Mouhamed). Votre compte sera instantanément validé.')" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow transition">
+              Payer par Wave / Orange Money
+            </button>
+          </div>
+        </div>
+
+        <!-- Panneau Super Admin Fondateur (Section 4.11) -->
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-base font-bold text-white flex items-center gap-2">
+                <i data-lucide="shield-check" class="w-5 h-5 text-amber-400"></i>
+                Espace Fondateur (Super Admin)
+              </h3>
+              <p class="text-xs text-slate-400">Gestion des pressings clients et activation des paiements Wave / OM</p>
+            </div>
+            <span class="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-xs font-bold border border-amber-500/30">Section 4.11</span>
+          </div>
+          <div id="admin-pressings-table-container"></div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- BARRE DE NAVIGATION INFÉRIEURE MOBILE (Touch-first) -->
+  <nav class="fixed bottom-0 left-0 right-0 z-30 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 sm:hidden">
+    <div class="flex items-center justify-around">
+      <button onclick="appUI.switchTab('dashboard')" id="nav-btn-dashboard" class="flex flex-col items-center gap-1 py-1 px-3 text-blue-400 transition">
+        <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold">Bord</span>
+      </button>
+
+      <button onclick="appUI.switchTab('caisse')" id="nav-btn-caisse" class="flex flex-col items-center gap-1 py-1 px-3 text-slate-400 hover:text-white transition">
+        <div class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center -mt-4 shadow-lg shadow-blue-500/30">
+          <i data-lucide="plus" class="w-5 h-5"></i>
+        </div>
+        <span class="text-[10px] font-bold">Facture</span>
+      </button>
+
+      <button onclick="appUI.switchTab('commandes')" id="nav-btn-commandes" class="flex flex-col items-center gap-1 py-1 px-3 text-slate-400 hover:text-white transition relative">
+        <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold">Commandes</span>
+        <span id="nav-alert-dot" class="hidden absolute top-1 right-3 w-2 h-2 rounded-full bg-rose-500"></span>
+      </button>
+
+      <button onclick="appUI.switchTab('clients')" id="nav-btn-clients" class="flex flex-col items-center gap-1 py-1 px-3 text-slate-400 hover:text-white transition">
+        <i data-lucide="users" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold">Clients</span>
+      </button>
+
+      <button onclick="appUI.switchTab('plus')" id="nav-btn-plus" class="flex flex-col items-center gap-1 py-1 px-3 text-slate-400 hover:text-white transition">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+        <span class="text-[10px] font-bold">Plus</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- MODAL : SWITCHER DE RÔLE (Section 2 & 5) -->
+  <div id="modal-role" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white">Changer de Rôle</h3>
+        <button onclick="appUI.closeModal('modal-role')" class="p-1 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <p class="text-xs text-slate-400">Basculez d'utilisateur pour tester les droits et la sécurité selon le cahier des charges :</p>
+      
+      <div class="space-y-2">
+        <button onclick="appUI.selectRole('owner')" class="w-full p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-blue-500 flex items-center gap-3 text-left transition">
+          <div class="w-9 h-9 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">👑</div>
+          <div>
+            <span class="text-sm font-bold text-white block">Propriétaire (Mouhamed)</span>
+            <span class="text-[11px] text-slate-400">Vue totale : Chiffres financiers, tarifs, dépenses, stock</span>
+          </div>
+        </button>
+
+        <button onclick="appUI.selectRole('employee')" class="w-full p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-blue-500 flex items-center gap-3 text-left transition">
+          <div class="w-9 h-9 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">👩‍💼</div>
+          <div>
+            <span class="text-sm font-bold text-white block">Employé (Aminata / Comptoir)</span>
+            <span class="text-[11px] text-slate-400">Saisie factures & atelier. <strong class="text-amber-400">Finances masquées</strong></span>
+          </div>
+        </button>
+
+        <button onclick="appUI.selectRole('tech')" class="w-full p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-blue-500 flex items-center gap-3 text-left transition">
+          <div class="w-9 h-9 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">🔧</div>
+          <div>
+            <span class="text-sm font-bold text-white block">Technicien Réparateur</span>
+            <span class="text-[11px] text-slate-400">Module 4.10 : Réception des pannes et interventions</span>
+          </div>
+        </button>
+
+        <button onclick="appUI.selectRole('admin')" class="w-full p-3 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 hover:border-blue-500 flex items-center gap-3 text-left transition">
+          <div class="w-9 h-9 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">⚡</div>
+          <div>
+            <span class="text-sm font-bold text-white block">Fondateur Plateforme (Admin)</span>
+            <span class="text-[11px] text-slate-400">Section 4.11 : Suivi des pressings & validations Wave</span>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : FACTURE & REÇU IMPRIMABLE (Format Ticket Thermique 80mm) -->
+  <div id="modal-receipt" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-4 space-y-3 shadow-2xl">
+      <div class="flex items-center justify-between no-print">
+        <h3 class="text-sm font-bold text-white">Reçu de Caisse</h3>
+        <button onclick="appUI.closeModal('modal-receipt')" class="p-1 text-slate-400 hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+
+      <!-- Ticket thermique imprimable -->
+      <div id="printable-receipt" class="bg-white text-slate-900 p-4 rounded-xl text-xs font-mono space-y-2 border border-slate-300"></div>
+
+      <div class="flex gap-2 pt-2 no-print">
+        <button onclick="window.print()" class="btn-touch flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          Imprimer Ticket
+        </button>
+        <button id="btn-share-receipt-wa" class="btn-touch flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          WhatsApp
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL : SIGNALER UNE PANNE MACHINE (Module 4.10) -->
+  <div id="modal-demande-depannage" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i data-lucide="wrench" class="w-5 h-5 text-rose-500"></i>
+          Signaler une Panne Machine
+        </h3>
+        <button onclick="appUI.closeModal('modal-demande-depannage')" class="p-1 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-medium text-slate-400 mb-1">Machine concernée</label>
+          <input type="text" id="panne-machine-input" placeholder="Ex: Lave-linge Samsung 16kg ou Fer vapeur Primus" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white">
+        </div>
+        <div>
+          <label class="block font-medium text-slate-400 mb-1">Quartier (Dakar)</label>
+          <input type="text" id="panne-quartier-input" value="Mermoz" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white">
+        </div>
+        <div>
+          <label class="block font-medium text-slate-400 mb-1">Description du problème</label>
+          <textarea id="panne-desc-input" rows="2" placeholder="Ex: Ne vidange plus, bruit étrange à l'essorage..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"></textarea>
+        </div>
+        <div class="flex items-center gap-2 bg-rose-950/40 border border-rose-500/40 p-2.5 rounded-xl">
+          <input type="checkbox" id="panne-urgence-input" checked class="w-4 h-4 text-rose-600 rounded">
+          <label for="panne-urgence-input" class="text-xs text-rose-200 font-semibold">🚨 Mode Urgence Pressing (bloque l'activité)</label>
+        </div>
+      </div>
+      <button onclick="appUI.submitPanneMachine()" class="btn-touch w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2">
+        <i data-lucide="send" class="w-4 h-4"></i>
+        Envoyer aux Techniciens Disponibles
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL : PARAMÈTRES, SAUVEGARDE & SYNC CLOUD (Firebase) -->
+  <div id="modal-settings" class="hidden fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i data-lucide="database" class="w-5 h-5 text-blue-400"></i>
+          Sauvegardes & Synchronisation
+        </h3>
+        <button onclick="appUI.closeModal('modal-settings')" class="p-1 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <p class="text-slate-400">
+          Vos données sont enregistrées en local de façon permanente. Vous pouvez exporter un backup JSON ou synchroniser avec Firebase.
+        </p>
+
+        <div class="flex gap-2">
+          <button onclick="appUI.exportBackup()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-slate-700 flex items-center justify-center gap-1.5">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            Exporter Sauvegarde
+          </button>
+          <label class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl border border-slate-700 flex items-center justify-center gap-1.5 cursor-pointer text-center">
+            <i data-lucide="upload" class="w-4 h-4"></i>
+            Restaurer Backup
+            <input type="file" id="backup-file-input" onchange="appUI.importBackup(event)" class="hidden" accept=".json">
+          </label>
+        </div>
+
+        <button onclick="appUI.resetDemoData()" class="w-full py-2 bg-slate-950 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-slate-800 rounded-xl transition">
+          Réinitialiser avec les données MF Clean par défaut
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts Applicatifs -->
+  <script src="js/store.js"></script>
+  <script src="js/voice-nlu.js"></script>
+  <script src="js/whatsapp.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').then((reg) => {
+          console.log('PressingPro PWA Service Worker actif');
+        }).catch((err) => {
+          console.log('SW registration error:', err);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
