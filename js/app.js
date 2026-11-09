@@ -248,14 +248,14 @@ class PressingAppUI {
     const margeEl = document.getElementById('dash-marge-badge');
     if (beneficeEl) {
       beneficeEl.textContent = `${stats.beneficeNet.toLocaleString('fr-FR')} FCFA`;
-      beneficeEl.className = stats.beneficeNet >= 0 
-        ? 'text-3xl sm:text-4xl font-black text-white' 
+      beneficeEl.className = stats.beneficeNet >= 0
+        ? 'text-3xl sm:text-4xl font-black text-white'
         : 'text-3xl sm:text-4xl font-black text-rose-400';
     }
     if (margeEl) {
       margeEl.textContent = `Marge : ${stats.margePct}%`;
-      margeEl.className = stats.margePct >= 0 
-        ? 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+      margeEl.className = stats.margePct >= 0
+        ? 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
         : 'px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30';
     }
 
@@ -985,7 +985,7 @@ class PressingAppUI {
     clients.sort((a, b) => (b.totalDepense || 0) - (a.totalDepense || 0));
 
     if (query) {
-      clients = clients.filter(c => 
+      clients = clients.filter(c =>
         c.nom.toLowerCase().includes(query) ||
         (c.telephone && c.telephone.includes(query)) ||
         (c.quartier && c.quartier.toLowerCase().includes(query))

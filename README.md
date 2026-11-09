@@ -97,3 +97,4 @@ L'application est 100% autonome et ne nécessite aucun serveur lourd.
    - L'application s'ouvre comme une vraie application native sans barre d'adresse, en plein écran, avec fonctionnement hors-ligne (Offline-first via Service Worker).
 3. **Sur Ordinateur** :
    - Cliquez sur l'icône d'installation dans la barre d'adresse pour l'installer comme logiciel de bureau.
+

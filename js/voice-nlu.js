@@ -70,7 +70,7 @@ class VoiceNLUEngine {
       try {
         this.recognition.stop();
         setTimeout(() => this.recognition.start(), 200);
-      } catch (err) {}
+      } catch (err) { }
     }
   }
 

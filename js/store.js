@@ -407,8 +407,8 @@ class PressingStore {
   // --- GESTION DES COMMANDES (Section 4.2 & 5) ---
   addCommande(commandeData) {
     // Règle 5: Les tarifs sont instanciés à la création de la commande
-    const newNumero = this.data.commandes.length > 0 
-      ? Math.max(...this.data.commandes.map(c => c.numero || 100)) + 1 
+    const newNumero = this.data.commandes.length > 0
+      ? Math.max(...this.data.commandes.map(c => c.numero || 100)) + 1
       : 101;
 
     const newCmd = {
@@ -462,8 +462,8 @@ class PressingStore {
   // --- GESTION DES CLIENTS (Section 4.6) ---
   updateClientFromOrder(cmd, wasPaidNow = false) {
     if (!cmd.clientNom) return;
-    let client = this.data.clients.find(c => 
-      c.nom.toLowerCase() === cmd.clientNom.toLowerCase() || 
+    let client = this.data.clients.find(c =>
+      c.nom.toLowerCase() === cmd.clientNom.toLowerCase() ||
       (cmd.clientTelephone && c.telephone === cmd.clientTelephone)
     );
 
@@ -510,18 +510,18 @@ class PressingStore {
     }
 
     if (prevue < todayStr) {
-      return { 
-        code: 'en_retard', 
-        label: 'En retard', 
+      return {
+        code: 'en_retard',
+        label: 'En retard',
         badgeClass: 'bg-rose-500/20 text-rose-400 border border-rose-500/40 animate-pulse font-bold',
         isLate: true
       };
     } else if (prevue === todayStr) {
-      return { 
-        code: 'aujourdhui', 
-        label: 'Aujourd\'hui', 
+      return {
+        code: 'aujourdhui',
+        label: 'Aujourd\'hui',
         badgeClass: 'bg-amber-500/20 text-amber-400 border border-amber-500/40 font-bold',
-        isToday: true 
+        isToday: true
       };
     } else {
       const d1 = new Date(todayStr);
@@ -707,9 +707,9 @@ class PressingStore {
     }
 
     // Règle 5: Un revenu est compté à la date où la commande est payée !
-    const commandesPayees = this.data.commandes.filter(c => 
-      c.statutPaiement === 'payee' && 
-      c.datePaiement && 
+    const commandesPayees = this.data.commandes.filter(c =>
+      c.statutPaiement === 'payee' &&
+      c.datePaiement &&
       c.datePaiement >= minDateStr
     );
 
@@ -741,7 +741,7 @@ class PressingStore {
     for (let i = 6; i >= 0; i--) {
       const dStr = getRelativeDateStr(-i);
       const dLabel = new Date(dStr).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' });
-      
+
       const revJour = this.data.commandes
         .filter(c => c.statutPaiement === 'payee' && c.datePaiement === dStr)
         .reduce((sum, c) => sum + (c.total || 0), 0);

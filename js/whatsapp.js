@@ -131,3 +131,4 @@ class WhatsAppEngine {
 
 // Instance globale
 window.whatsappEngine = new WhatsAppEngine();
+
