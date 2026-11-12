@@ -6,6 +6,9 @@
   <title>MF Clean - Pressing Pro Sénégal</title>
   <meta name="description" content="Application de gestion de pressing pensée pour mobile et atelier au Sénégal">
   <meta name="theme-color" content="#1e40af">
+  <!-- En-têtes de sécurité & Content Security Policy (CSP) -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://unpkg.com; style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://cdn.tailwindcss.com https://unpkg.com;">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
   <link rel="apple-touch-icon" href="icons/icon.svg">
   <link rel="manifest" href="manifest.json">
@@ -741,6 +744,39 @@
     </div>
   </div>
 
+  <!-- MODAL : SÉCURITÉ & VÉRIFICATION CODE PIN (Section 2, 5 & 6) -->
+  <div id="modal-pin" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i data-lucide="lock" class="w-5 h-5 text-amber-400"></i>
+          Accès Sécurisé
+        </h3>
+        <button onclick="appUI.closeModal('modal-pin')" class="p-1 text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+      <p class="text-xs text-slate-400" id="pin-modal-desc">
+        Veuillez saisir le code PIN de sécurité pour accéder aux données sensibles :
+      </p>
+      
+      <div class="space-y-3">
+        <div>
+          <input type="password" id="input-security-pin" maxlength="8" placeholder="••••" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-center text-xl tracking-widest text-white font-mono focus:border-blue-500 focus:outline-none">
+          <p id="pin-error-msg" class="hidden text-xs text-rose-400 mt-1 font-semibold text-center">Code PIN incorrect.</p>
+        </div>
+        <p class="text-[11px] text-slate-500 text-center">Code PIN par défaut : <code class="text-slate-300 font-mono">1234</code></p>
+        <div class="flex gap-2">
+          <button onclick="appUI.closeModal('modal-pin')" class="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition">
+            Annuler
+          </button>
+          <button onclick="appUI.confirmPINVerification()" class="flex-1 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            Déverrouiller
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL : FACTURE & REÇU IMPRIMABLE (Format Ticket Thermique 80mm) -->
   <div id="modal-receipt" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
     <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-sm w-full p-4 space-y-3 shadow-2xl">
@@ -826,6 +862,20 @@
             Restaurer Backup
             <input type="file" id="backup-file-input" onchange="appUI.importBackup(event)" class="hidden" accept=".json">
           </label>
+        </div>
+
+        <div class="border-t border-slate-800 pt-3 space-y-2">
+          <h4 class="font-bold text-white text-xs flex items-center gap-1.5">
+            <i data-lucide="key" class="w-3.5 h-3.5 text-amber-400"></i>
+            Code PIN de Sécurité (Propriétaire)
+          </h4>
+          <div class="flex gap-2">
+            <input type="password" id="input-pin-current" placeholder="PIN actuel (défaut: 1234)" maxlength="8" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs">
+            <input type="password" id="input-pin-new" placeholder="Nouveau PIN" maxlength="8" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs">
+          </div>
+          <button onclick="appUI.changeSecurityPIN()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs border border-slate-700 transition">
+            Mettre à jour le code PIN
+          </button>
         </div>
 
         <button onclick="appUI.resetDemoData()" class="w-full py-2 bg-slate-950 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-slate-800 rounded-xl transition">

@@ -366,16 +366,95 @@ class PressingStore {
 
   importJSON(jsonString) {
     try {
+      if (typeof jsonString !== 'string' || jsonString.length > 5000000) {
+        console.error('Sauvegarde trop volumineuse ou invalide');
+        return false;
+      }
+
+      // Protection stricte contre la pollution de prototype
+      if (jsonString.includes('__proto__') || jsonString.includes('constructor') || jsonString.includes('prototype')) {
+        console.warn('Tentative potentielle de pollution de prototype détectée et bloquée');
+        return false;
+      }
+
       const parsed = JSON.parse(jsonString);
-      if (parsed && parsed.tarifs && parsed.commandes) {
-        this.data = parsed;
+
+      // Validation de schéma et filtrage rigoureux
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        Array.isArray(parsed.tarifs) &&
+        Array.isArray(parsed.commandes) &&
+        Array.isArray(parsed.clients)
+      ) {
+        this.data = {
+          pressing: {
+            ...this.data.pressing,
+            ...(parsed.pressing && typeof parsed.pressing === 'object' ? parsed.pressing : {})
+          },
+          tarifs: parsed.tarifs.filter(t => t && typeof t.nom === 'string' && !isNaN(Number(t.prix))),
+          clients: parsed.clients.filter(c => c && typeof c.nom === 'string'),
+          commandes: parsed.commandes.filter(c => c && typeof c.id === 'string'),
+          depenses: Array.isArray(parsed.depenses) ? parsed.depenses.filter(d => d && !isNaN(Number(d.montant))) : [],
+          stocks: Array.isArray(parsed.stocks) ? parsed.stocks.filter(s => s && typeof s.nom === 'string') : [],
+          techniciens: Array.isArray(parsed.techniciens) ? parsed.techniciens : this.data.techniciens,
+          demandesDepannage: Array.isArray(parsed.demandesDepannage) ? parsed.demandesDepannage : [],
+          pressingsAdmin: Array.isArray(parsed.pressingsAdmin) ? parsed.pressingsAdmin : this.data.pressingsAdmin,
+          annonces: Array.isArray(parsed.annonces) ? parsed.annonces : [],
+          security: this.data.security || { pinHash: '' }
+        };
         this.save();
         return true;
       }
     } catch (e) {
-      console.error('JSON invalide:', e);
+      console.error('Erreur validation importJSON:', e);
     }
     return false;
+  }
+
+  // --- SÉCURITÉ & AUTHENTIFICATION CODE PIN ---
+  async computeHash(pin) {
+    const raw = 'mfclean_sec_' + String(pin || '').trim();
+    if (window.crypto && window.crypto.subtle) {
+      try {
+        const msgUint8 = new TextEncoder().encode(raw);
+        const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgUint8);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      } catch (e) {
+        // Fallback
+      }
+    }
+    // Algorithme de hachage de secours
+    let h = 0x811c9dc5;
+    for (let i = 0; i < raw.length; i++) {
+      h ^= raw.charCodeAt(i);
+      h += (h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24);
+    }
+    return 'fallback_' + (h >>> 0).toString(16);
+  }
+
+  async verifyPIN(pin) {
+    if (!pin) return false;
+    const computed = await this.computeHash(pin);
+    const storedHash = this.data.security?.pinHash;
+    if (!storedHash) {
+      // Par défaut, le code PIN est "1234"
+      const defaultHash = await this.computeHash('1234');
+      return computed === defaultHash || String(pin).trim() === '1234';
+    }
+    return computed === storedHash;
+  }
+
+  async setPIN(oldPin, newPin) {
+    if (!newPin || String(newPin).trim().length < 4) return false;
+    const isValid = await this.verifyPIN(oldPin);
+    if (!isValid) return false;
+
+    if (!this.data.security) this.data.security = {};
+    this.data.security.pinHash = await this.computeHash(newPin);
+    this.save();
+    return true;
   }
 
   // --- GESTION DES RÔLES ---
@@ -693,6 +772,23 @@ class PressingStore {
 
   // --- CALCULS DU TABLEAU DE BORD (Section 4.1 & 5) ---
   getDashboardStats(period = '7j') {
+    // Cloisonnement strict à la source : les employés ne reçoivent aucune donnée financière
+    if (this.isEmployee()) {
+      return {
+        totalRevenus: 0,
+        totalDepenses: 0,
+        beneficeNet: 0,
+        margePct: 0,
+        nbCommandes: 0,
+        panierMoyen: 0,
+        enCours: this.data.commandes.filter(c => c.statut === 'en_cours').length,
+        pretes: this.data.commandes.filter(c => c.statut === 'prete').length,
+        impayees: this.data.commandes.filter(c => c.statutPaiement === 'impayee' && c.statut !== 'retiree').length,
+        totalImpayes: 0,
+        chartDays: []
+      };
+    }
+
     const now = new Date();
     let minDateStr = '';
 

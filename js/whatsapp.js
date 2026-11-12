@@ -36,7 +36,7 @@ class WhatsAppEngine {
       navigator.clipboard.writeText(message).catch(() => {});
     }
 
-    window.open(url, '_blank');
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   /**

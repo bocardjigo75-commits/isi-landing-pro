@@ -4,6 +4,18 @@
  * l'assistant vocal bilingue et les règles métier du cahier des charges.
  */
 
+// Fonction utilitaire d'échappement XSS pour toutes les interpolations DOM
+function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[&<>'"]/g, tag => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;'
+  }[tag] || tag));
+}
+
 class PressingAppUI {
   constructor() {
     this.currentTab = 'dashboard';
@@ -190,8 +202,65 @@ class PressingAppUI {
   }
 
   selectRole(role) {
+    // Si l'utilisateur bascule vers un rôle sensible (Propriétaire ou Super Admin), demander le code PIN
+    const current = window.pressingStore.getRole();
+    if ((role === 'owner' || role === 'admin') && current !== role) {
+      this.pendingRole = role;
+      this.closeModal('modal-role');
+      const pinInput = document.getElementById('input-security-pin');
+      if (pinInput) pinInput.value = '';
+      const pinErr = document.getElementById('pin-error-msg');
+      if (pinErr) pinErr.classList.add('hidden');
+      document.getElementById('modal-pin').classList.remove('hidden');
+      if (pinInput) pinInput.focus();
+      return;
+    }
+
     window.pressingStore.setRole(role);
     this.closeModal('modal-role');
+  }
+
+  async confirmPINVerification() {
+    const pinInput = document.getElementById('input-security-pin');
+    const pin = pinInput ? pinInput.value.trim() : '';
+    const pinErr = document.getElementById('pin-error-msg');
+
+    const isValid = await window.pressingStore.verifyPIN(pin);
+    if (isValid) {
+      if (pinErr) pinErr.classList.add('hidden');
+      this.closeModal('modal-pin');
+      window.pressingStore.setRole(this.pendingRole || 'owner');
+      this.pendingRole = null;
+      this.playSound('success');
+    } else {
+      if (pinErr) pinErr.classList.remove('hidden');
+      this.playSound('alert');
+    }
+  }
+
+  async changeSecurityPIN() {
+    const curPinInput = document.getElementById('input-pin-current');
+    const newPinInput = document.getElementById('input-pin-new');
+    const curPin = curPinInput ? curPinInput.value.trim() : '';
+    const newPin = newPinInput ? newPinInput.value.trim() : '';
+
+    if (!curPin || !newPin) {
+      alert('Veuillez renseigner le code PIN actuel et le nouveau code PIN.');
+      return;
+    }
+    if (newPin.length < 4) {
+      alert('Le nouveau code PIN doit comporter au moins 4 caractères.');
+      return;
+    }
+
+    const success = await window.pressingStore.setPIN(curPin, newPin);
+    if (success) {
+      alert('Code PIN de sécurité mis à jour avec succès !');
+      if (curPinInput) curPinInput.value = '';
+      if (newPinInput) newPinInput.value = '';
+    } else {
+      alert('Code PIN actuel incorrect.');
+    }
   }
 
   updateRoleDisplay() {
@@ -393,7 +462,7 @@ class PressingAppUI {
     const dl = document.getElementById('clients-datalist');
     if (dl) {
       dl.innerHTML = (window.pressingStore.data.clients || [])
-        .map(c => `<option value="${c.nom}">${c.telephone || ''} - ${c.quartier || ''}</option>`)
+        .map(c => `<option value="${escapeHTML(c.nom)}">${escapeHTML(c.telephone || '')} - ${escapeHTML(c.quartier || '')}</option>`)
         .join('');
     }
 
@@ -405,10 +474,10 @@ class PressingAppUI {
       return `
         <div class="bg-slate-950 border ${curQty > 0 ? 'border-blue-500 bg-blue-950/20' : 'border-slate-800'} p-3 rounded-xl flex items-center justify-between transition">
           <div class="flex-1 pr-2">
-            <span class="text-xs font-bold text-white block">${t.nom}</span>
+            <span class="text-xs font-bold text-white block">${escapeHTML(t.nom)}</span>
             <div class="flex items-center gap-1.5 mt-0.5">
               <span class="text-xs font-black text-cyan-400">${t.prix.toLocaleString('fr-FR')} FCFA</span>
-              <span class="text-[10px] text-slate-400">/ ${unitLabel}</span>
+              <span class="text-[10px] text-slate-400">/ ${escapeHTML(unitLabel)}</span>
             </div>
           </div>
 
@@ -523,7 +592,7 @@ class PressingAppUI {
         summaryContainer.innerHTML = itemsList.map(i => `
           <div class="flex items-center justify-between py-1 border-b border-slate-800/60">
             <div class="truncate pr-2">
-              <span class="font-bold text-white">${i.quantite} ×</span> ${i.tarif.nom}
+              <span class="font-bold text-white">${i.quantite} ×</span> ${escapeHTML(i.tarif.nom)}
               <span class="text-[10px] text-slate-500">(${i.tarif.prix} FCFA/${i.tarif.unite === 'kilo' ? 'kg' : 'pc'})</span>
             </div>
             <span class="font-semibold text-slate-200 shrink-0">${(i.quantite * i.tarif.prix).toLocaleString('fr-FR')} FCFA</span>
@@ -785,10 +854,10 @@ class PressingAppUI {
           <!-- En-tête Carte Commande -->
           <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
             <div class="flex items-center gap-2">
-              <span class="text-sm font-black text-white">${cmd.id}</span>
+              <span class="text-sm font-black text-white">${escapeHTML(cmd.id)}</span>
               <!-- Libellé d'alerte échéance (Section 4.5) -->
-              <span class="px-2.5 py-0.5 rounded-full text-[11px] ${alertInfo.badgeClass}">
-                ${alertInfo.label}
+              <span class="px-2.5 py-0.5 rounded-full text-[11px] ${escapeHTML(alertInfo.badgeClass)}">
+                ${escapeHTML(alertInfo.label)}
               </span>
               ${cmd.express ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30">⚡ Express</span>' : ''}
             </div>
@@ -811,12 +880,12 @@ class PressingAppUI {
             <div>
               <div class="font-bold text-white text-sm flex items-center gap-1.5">
                 <i data-lucide="user" class="w-3.5 h-3.5 text-blue-400"></i>
-                ${cmd.clientNom}
+                ${escapeHTML(cmd.clientNom)}
               </div>
               <div class="text-slate-400 text-[11px] mt-0.5 flex items-center gap-3">
-                <span>📞 ${cmd.clientTelephone || 'Non renseigné'}</span>
-                <span>📅 Dépôt : ${cmd.dateDepot}</span>
-                <span>⏰ Retrait : <strong class="text-white">${cmd.dateRetraitPrevue}</strong></span>
+                <span>📞 ${escapeHTML(cmd.clientTelephone || 'Non renseigné')}</span>
+                <span>📅 Dépôt : ${escapeHTML(cmd.dateDepot)}</span>
+                <span>⏰ Retrait : <strong class="text-white">${escapeHTML(cmd.dateRetraitPrevue)}</strong></span>
               </div>
             </div>
 
@@ -831,7 +900,7 @@ class PressingAppUI {
           <div class="bg-slate-950/60 p-2.5 rounded-xl text-[11px] text-slate-300 space-y-1">
             ${cmd.articles.map(a => `
               <div class="flex justify-between">
-                <span>▪️ ${a.quantite} ${a.unite === 'kilo' ? 'kg' : 'pc'} × ${a.serviceNom}</span>
+                <span>▪️ ${a.quantite} ${a.unite === 'kilo' ? 'kg' : 'pc'} × ${escapeHTML(a.serviceNom)}</span>
                 <span class="text-slate-400 font-medium">${a.totalLigne.toLocaleString('fr-FR')} FCFA</span>
               </div>
             `).join('')}
@@ -841,14 +910,14 @@ class PressingAppUI {
           <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800">
             <div class="flex items-center gap-1.5 flex-wrap">
               ${cmd.statut === 'en_cours' ? `
-                <button onclick="appUI.changeOrderStatus('${cmd.id}', 'prete')" class="btn-touch px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1">
+                <button onclick="appUI.changeOrderStatus('${escapeHTML(cmd.id)}', 'prete')" class="btn-touch px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1">
                   <i data-lucide="check" class="w-3.5 h-3.5"></i>
                   Marquer Prête
                 </button>
               ` : ''}
 
               ${cmd.statut === 'prete' ? `
-                <button onclick="appUI.changeOrderStatus('${cmd.id}', 'retiree')" class="btn-touch px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1 border border-slate-700">
+                <button onclick="appUI.changeOrderStatus('${escapeHTML(cmd.id)}', 'retiree')" class="btn-touch px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1 border border-slate-700">
                   <i data-lucide="package-check" class="w-3.5 h-3.5 text-emerald-400"></i>
                   Marquer Retirée
                 </button>
@@ -856,7 +925,7 @@ class PressingAppUI {
 
               <!-- BOUTON ENCAISSER SI IMPAYÉE (Section 4.2) -->
               ${!isPaid ? `
-                <button onclick="appUI.encaisser('${cmd.id}')" class="btn-touch px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 transition flex items-center gap-1">
+                <button onclick="appUI.encaisser('${escapeHTML(cmd.id)}')" class="btn-touch px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow-lg shadow-emerald-600/20 transition flex items-center gap-1">
                   <i data-lucide="banknote" class="w-4 h-4"></i>
                   Encaisser (${cmd.total.toLocaleString('fr-FR')} F)
                 </button>
@@ -865,12 +934,12 @@ class PressingAppUI {
 
             <div class="flex items-center gap-1.5">
               <!-- WhatsApp -->
-              <button onclick="appUI.sendOrderWhatsApp('${cmd.id}')" class="p-2 rounded-xl bg-slate-800 hover:bg-emerald-950/40 text-emerald-400 border border-slate-700 hover:border-emerald-500 transition" title="Partager par WhatsApp">
+              <button onclick="appUI.sendOrderWhatsApp('${escapeHTML(cmd.id)}')" class="p-2 rounded-xl bg-slate-800 hover:bg-emerald-950/40 text-emerald-400 border border-slate-700 hover:border-emerald-500 transition" title="Partager par WhatsApp">
                 <i data-lucide="send" class="w-4 h-4"></i>
               </button>
 
               <!-- Imprimer Reçu -->
-              <button onclick="appUI.openReceiptModal('${cmd.id}')" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Imprimer Ticket">
+              <button onclick="appUI.openReceiptModal('${escapeHTML(cmd.id)}')" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Imprimer Ticket">
                 <i data-lucide="printer" class="w-4 h-4"></i>
               </button>
             </div>
@@ -916,24 +985,24 @@ class PressingAppUI {
     if (receiptDiv) {
       receiptDiv.innerHTML = `
         <div class="text-center pb-2 border-b border-black">
-          <div class="font-bold text-sm tracking-widest">${p.nom.toUpperCase()}</div>
-          <div class="text-[10px]">${p.slogan || 'Pressing Professionnel'}</div>
-          <div class="text-[10px]">${p.adresse}</div>
-          <div class="text-[10px]">Tél : ${p.telephone}</div>
+          <div class="font-bold text-sm tracking-widest">${escapeHTML(p.nom.toUpperCase())}</div>
+          <div class="text-[10px]">${escapeHTML(p.slogan || 'Pressing Professionnel')}</div>
+          <div class="text-[10px]">${escapeHTML(p.adresse)}</div>
+          <div class="text-[10px]">Tél : ${escapeHTML(p.telephone)}</div>
         </div>
 
         <div class="py-2 border-b border-black text-[11px] space-y-0.5">
-          <div><strong>TICKET N° ${cmd.id}</strong></div>
-          <div>Client : ${cmd.clientNom}</div>
-          <div>Dépôt : ${cmd.dateDepot}</div>
-          <div><strong>Retrait prévu : ${cmd.dateRetraitPrevue}</strong></div>
+          <div><strong>TICKET N° ${escapeHTML(cmd.id)}</strong></div>
+          <div>Client : ${escapeHTML(cmd.clientNom)}</div>
+          <div>Dépôt : ${escapeHTML(cmd.dateDepot)}</div>
+          <div><strong>Retrait prévu : ${escapeHTML(cmd.dateRetraitPrevue)}</strong></div>
           ${cmd.express ? '<div>*** PRIORITE EXPRESS ***</div>' : ''}
         </div>
 
         <div class="py-2 border-b border-black text-[11px] space-y-1">
           ${cmd.articles.map(a => `
             <div class="flex justify-between">
-              <span>${a.quantite} ${a.unite === 'kilo' ? 'kg' : 'pc'} × ${a.serviceNom}</span>
+              <span>${a.quantite} ${a.unite === 'kilo' ? 'kg' : 'pc'} × ${escapeHTML(a.serviceNom)}</span>
               <span>${a.totalLigne} F</span>
             </div>
           `).join('')}
@@ -1002,10 +1071,10 @@ class PressingAppUI {
             <div>
               <div class="flex items-center gap-2">
                 <span class="w-5 h-5 rounded-full bg-slate-800 text-slate-400 text-xs flex items-center justify-center font-bold">#${index + 1}</span>
-                <h4 class="font-bold text-white text-sm">${c.nom}</h4>
+                <h4 class="font-bold text-white text-sm">${escapeHTML(c.nom)}</h4>
                 ${c.vip ? '<span class="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30">VIP ⭐</span>' : ''}
               </div>
-              <p class="text-[11px] text-slate-400 mt-1">📞 ${c.telephone} • 📍 ${c.quartier || 'Dakar'}</p>
+              <p class="text-[11px] text-slate-400 mt-1">📞 ${escapeHTML(c.telephone)} • 📍 ${escapeHTML(c.quartier || 'Dakar')}</p>
             </div>
 
             <!-- Repère "À relancer" (Section 4.6) -->
@@ -1028,9 +1097,9 @@ class PressingAppUI {
           </div>
 
           <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800">
-            <span>Dernière commande : ${c.derniereCommande || 'N/A'}</span>
+            <span>Dernière commande : ${escapeHTML(c.derniereCommande || 'N/A')}</span>
             <!-- Bouton Relance WhatsApp -->
-            <button onclick="appUI.relancerClient('${c.id}')" class="px-3 py-1.5 rounded-xl ${isRelance ? 'bg-amber-600 hover:bg-amber-500 text-white font-bold' : 'bg-slate-800 hover:bg-slate-700 text-slate-200'} transition flex items-center gap-1.5">
+            <button onclick="appUI.relancerClient('${escapeHTML(c.id)}')" class="px-3 py-1.5 rounded-xl ${isRelance ? 'bg-amber-600 hover:bg-amber-500 text-white font-bold' : 'bg-slate-800 hover:bg-slate-700 text-slate-200'} transition flex items-center gap-1.5">
               <i data-lucide="send" class="w-3.5 h-3.5 text-emerald-400"></i>
               ${isRelance ? 'Relancer WhatsApp' : 'Message'}
             </button>
@@ -1055,9 +1124,9 @@ class PressingAppUI {
 
     window.pressingStore.data.clients.push({
       id: 'c_' + Date.now(),
-      nom: nom.trim(),
-      telephone: telephone.trim(),
-      quartier: quartier.trim(),
+      nom: nom.trim().slice(0, 100),
+      telephone: telephone.trim().slice(0, 30),
+      quartier: quartier.trim().slice(0, 100),
       vip: false,
       totalDepense: 0,
       nbCommandes: 0,
@@ -1089,14 +1158,14 @@ class PressingAppUI {
               <div class="bg-rose-950/20 border border-rose-500/40 p-3.5 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                 <div>
                   <div class="font-bold text-white flex items-center gap-2">
-                    <span>${d.machine}</span>
+                    <span>${escapeHTML(d.machine)}</span>
                     ${d.urgence ? '<span class="px-2 py-0.2 rounded bg-rose-500 text-white text-[10px] font-black">Urgence Pressing</span>' : ''}
                   </div>
-                  <p class="text-slate-300 text-[11px] mt-0.5">${d.description} • 📍 ${d.quartier}</p>
+                  <p class="text-slate-300 text-[11px] mt-0.5">${escapeHTML(d.description)} • 📍 ${escapeHTML(d.quartier)}</p>
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="text-[11px] text-amber-400 font-semibold">Attente technicien</span>
-                  <button onclick="appUI.contactTechPourPanne('${d.id}')" class="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold text-xs flex items-center gap-1">
+                  <button onclick="appUI.contactTechPourPanne('${escapeHTML(d.id)}')" class="px-3 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg font-bold text-xs flex items-center gap-1">
                     <i data-lucide="send" class="w-3.5 h-3.5"></i>
                     Alerter Réparateur
                   </button>
@@ -1119,10 +1188,10 @@ class PressingAppUI {
               </div>
               <div>
                 <div class="flex items-center gap-1.5">
-                  <h4 class="font-bold text-white text-sm">${t.nom}</h4>
+                  <h4 class="font-bold text-white text-sm">${escapeHTML(t.nom)}</h4>
                   ${t.verifie ? '<i data-lucide="badge-check" class="w-4 h-4 text-emerald-400" title="Vérifié par la plateforme"></i>' : ''}
                 </div>
-                <p class="text-[11px] text-slate-400">${t.entreprise}</p>
+                <p class="text-[11px] text-slate-400">${escapeHTML(t.entreprise)}</p>
               </div>
             </div>
             
@@ -1132,21 +1201,21 @@ class PressingAppUI {
             </div>
           </div>
 
-          <p class="text-xs text-slate-300">${t.description}</p>
+          <p class="text-xs text-slate-300">${escapeHTML(t.description)}</p>
 
           <div class="space-y-1 text-[11px]">
-            <div class="text-slate-400"><strong>Marques :</strong> ${t.marques.join(', ')}</div>
-            <div class="text-slate-400"><strong>Zones :</strong> ${t.zones.join(', ')}</div>
-            <div class="text-cyan-400 font-semibold"><strong>Tarif indicatif :</strong> ${t.tarifIndicatif}</div>
+            <div class="text-slate-400"><strong>Marques :</strong> ${escapeHTML(t.marques.join(', '))}</div>
+            <div class="text-slate-400"><strong>Zones :</strong> ${escapeHTML(t.zones.join(', '))}</div>
+            <div class="text-cyan-400 font-semibold"><strong>Tarif indicatif :</strong> ${escapeHTML(t.tarifIndicatif)}</div>
           </div>
         </div>
 
         <div class="flex gap-2 pt-2 border-t border-slate-800">
-          <a href="tel:${t.telephone}" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition">
+          <a href="tel:${escapeHTML(t.telephone)}" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition">
             <i data-lucide="phone" class="w-3.5 h-3.5 text-blue-400"></i>
             Appeler
           </a>
-          <button onclick="appUI.contactTechWA('${t.id}')" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition">
+          <button onclick="appUI.contactTechWA('${escapeHTML(t.id)}')" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition">
             <i data-lucide="send" class="w-3.5 h-3.5"></i>
             WhatsApp
           </button>
@@ -1234,7 +1303,7 @@ class PressingAppUI {
           <tbody class="divide-y divide-slate-800">
             ${tarifs.map(t => `
               <tr class="hover:bg-slate-850">
-                <td class="p-3 font-bold text-white">${t.nom}</td>
+                <td class="p-3 font-bold text-white">${escapeHTML(t.nom)}</td>
                 <td class="p-3">
                   <span class="px-2 py-0.5 rounded text-[10px] font-semibold ${t.unite === 'kilo' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-purple-500/20 text-purple-400'}">
                     ${t.unite === 'kilo' ? 'au kilo' : 'à la pièce'}
@@ -1242,8 +1311,8 @@ class PressingAppUI {
                 </td>
                 <td class="p-3 font-black text-emerald-400">${t.prix.toLocaleString('fr-FR')} F</td>
                 <td class="p-3 text-right space-x-1">
-                  <button onclick="appUI.editTarif('${t.id}')" class="p-1 hover:text-blue-400"><i data-lucide="edit-3" class="w-3.5 h-3.5 inline"></i></button>
-                  <button onclick="appUI.deleteTarif('${t.id}')" class="p-1 hover:text-rose-400"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline"></i></button>
+                  <button onclick="appUI.editTarif('${escapeHTML(t.id)}')" class="p-1 hover:text-blue-400"><i data-lucide="edit-3" class="w-3.5 h-3.5 inline"></i></button>
+                  <button onclick="appUI.deleteTarif('${escapeHTML(t.id)}')" class="p-1 hover:text-rose-400"><i data-lucide="trash-2" class="w-3.5 h-3.5 inline"></i></button>
                 </td>
               </tr>
             `).join('')}
@@ -1300,14 +1369,14 @@ class PressingAppUI {
       <div class="bg-slate-900 border border-slate-800 p-3 rounded-xl flex items-center justify-between text-xs">
         <div>
           <div class="flex items-center gap-2">
-            <span class="font-bold text-white">${d.label}</span>
-            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400 uppercase">${d.categorie}</span>
+            <span class="font-bold text-white">${escapeHTML(d.label)}</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-slate-400 uppercase">${escapeHTML(d.categorie)}</span>
           </div>
-          <span class="text-[11px] text-slate-500">${d.date} • ${d.note || 'Sans note'}</span>
+          <span class="text-[11px] text-slate-500">${escapeHTML(d.date)} • ${escapeHTML(d.note || 'Sans note')}</span>
         </div>
         <div class="flex items-center gap-3">
           <span class="text-sm font-black text-rose-400">-${d.montant.toLocaleString('fr-FR')} FCFA</span>
-          <button onclick="appUI.deleteDepense('${d.id}')" class="p-1 hover:text-rose-400 text-slate-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+          <button onclick="appUI.deleteDepense('${escapeHTML(d.id)}')" class="p-1 hover:text-rose-400 text-slate-500"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
         </div>
       </div>
     `).join('');
@@ -1345,8 +1414,8 @@ class PressingAppUI {
       <div class="bg-slate-900 border ${s.alerte ? 'border-amber-500/60 bg-amber-950/20' : 'border-slate-800'} p-3.5 rounded-2xl space-y-2">
         <div class="flex items-start justify-between">
           <div>
-            <h4 class="font-bold text-white text-xs">${s.nom}</h4>
-            <span class="text-[10px] text-slate-400">${s.unite}</span>
+            <h4 class="font-bold text-white text-xs">${escapeHTML(s.nom)}</h4>
+            <span class="text-[10px] text-slate-400">${escapeHTML(s.unite)}</span>
           </div>
           ${s.alerte ? '<span class="px-2 py-0.5 rounded text-[10px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse">Stock bas !</span>' : ''}
         </div>
@@ -1355,13 +1424,13 @@ class PressingAppUI {
           <span class="text-xl font-black text-white">${s.quantite}</span>
 
           <div class="flex items-center gap-1">
-            <button onclick="appUI.adjustStock('${s.id}', -1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center">−1</button>
-            <button onclick="appUI.adjustStock('${s.id}', 1)" class="w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold flex items-center justify-center">+1</button>
-            <button onclick="appUI.adjustStock('${s.id}', 5)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center">+5</button>
+            <button onclick="appUI.adjustStock('${escapeHTML(s.id)}', -1)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold flex items-center justify-center">−1</button>
+            <button onclick="appUI.adjustStock('${escapeHTML(s.id)}', 1)" class="w-8 h-8 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold flex items-center justify-center">+1</button>
+            <button onclick="appUI.adjustStock('${escapeHTML(s.id)}', 5)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center justify-center">+5</button>
           </div>
         </div>
 
-        <div class="text-[10px] text-slate-500">Seuil d'alerte : ${s.seuilAlerte} ${s.unite}</div>
+        <div class="text-[10px] text-slate-500">Seuil d'alerte : ${s.seuilAlerte} ${escapeHTML(s.unite)}</div>
       </div>
     `).join('');
   }
@@ -1442,21 +1511,21 @@ class PressingAppUI {
             ${list.map(p => `
               <tr class="hover:bg-slate-850">
                 <td class="p-3">
-                  <strong class="text-white block">${p.nom}</strong>
-                  <span class="text-[10px] text-slate-400">${p.proprietaire} • ${p.telephone}</span>
+                  <strong class="text-white block">${escapeHTML(p.nom)}</strong>
+                  <span class="text-[10px] text-slate-400">${escapeHTML(p.proprietaire)} • ${escapeHTML(p.telephone)}</span>
                 </td>
-                <td class="p-3 uppercase font-semibold text-cyan-400">${p.formule}</td>
+                <td class="p-3 uppercase font-semibold text-cyan-400">${escapeHTML(p.formule)}</td>
                 <td class="p-3">
                   <span class="px-2 py-0.5 rounded text-[10px] font-black ${p.statutAbonnement === 'actif' ? 'bg-emerald-500/20 text-emerald-400' : p.statutAbonnement === 'essai' ? 'bg-blue-500/20 text-blue-400' : 'bg-rose-500/20 text-rose-400'}">
-                    ${p.statutAbonnement.toUpperCase()}
+                    ${escapeHTML(p.statutAbonnement.toUpperCase())}
                   </span>
                 </td>
-                <td class="p-3">${p.dateEcheance}</td>
+                <td class="p-3">${escapeHTML(p.dateEcheance)}</td>
                 <td class="p-3 text-right space-x-1.5">
-                  <button onclick="appUI.validerPaiementWave('${p.id}')" class="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-[11px] font-bold">
+                  <button onclick="appUI.validerPaiementWave('${escapeHTML(p.id)}')" class="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-[11px] font-bold">
                     Valider Wave (+30j)
                   </button>
-                  <button onclick="appUI.toggleSuspension('${p.id}')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px]">
+                  <button onclick="appUI.toggleSuspension('${escapeHTML(p.id)}')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-[11px]">
                     ${p.statutAbonnement === 'suspendu' ? 'Réactiver' : 'Suspendre'}
                   </button>
                 </td>
@@ -1506,15 +1575,19 @@ class PressingAppUI {
   importBackup(event) {
     const file = event.target.files[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Le fichier est trop volumineux (maximum 5 Mo).');
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (e) => {
       const ok = window.pressingStore.importJSON(e.target.result);
       if (ok) {
-        alert('Sauvegarde restaurée avec succès !');
+        alert('Sauvegarde restaurée et vérifiée avec succès !');
         this.closeModal('modal-settings');
         this.refreshAll();
       } else {
-        alert('Fichier de sauvegarde invalide.');
+        alert('Fichier de sauvegarde invalide ou corrompu.');
       }
     };
     reader.readAsText(file);

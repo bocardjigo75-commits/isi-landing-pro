@@ -4,6 +4,11 @@
  * Analyse syntaxique & sémantique pour la création de factures et commandes
  */
 
+// Helper pour échapper les caractères spéciaux dans les expressions régulières
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 class VoiceNLUEngine {
   constructor() {
     this.recognition = null;
@@ -88,7 +93,9 @@ class VoiceNLUEngine {
   parseInvoiceSentence(text, tarifsList) {
     if (!text || typeof text !== 'string') return null;
 
-    const lower = text.toLowerCase().trim();
+    // Protection ReDoS : limiter la taille maximale du texte analysé
+    const safeText = text.slice(0, 1000);
+    const lower = safeText.toLowerCase().trim();
     let recognizedClient = '';
     let isExpress = false;
     const recognizedItems = [];
@@ -197,17 +204,18 @@ class VoiceNLUEngine {
         if (lower.includes(pat)) {
           // Extraire le contexte autour du mot clé pour trouver la quantité
           let qty = 1;
+          const escapedPat = escapeRegExp(pat);
 
           // Chercher avant ou après le pattern
           // Regex 1 : nombre numérique avant "3 kilos de lavage", "2 costumes"
-          const regexNumericBefore = new RegExp(`(?:(\\d+(?:[.,]\\d+)?)\\s*(?:kilos?|kg|pièces?|piece)?\\s*(?:de\\s+|d'\\s*)?)${pat}`, 'i');
+          const regexNumericBefore = new RegExp(`(?:(\\d+(?:[.,]\\d+)?)\\s*(?:kilos?|kg|pièces?|piece)?\\s*(?:de\\s+|d'\\s*)?)${escapedPat}`, 'i');
           const m1 = lower.match(regexNumericBefore);
           if (m1 && m1[1]) {
             qty = parseFloat(m1[1].replace(',', '.'));
           } else {
             // Regex 2 : mot numérique wolof ou français avant : "ñaari costumes", "trois kilos"
             for (const [word, val] of Object.entries(numberWords)) {
-              const regexWordBefore = new RegExp(`(?:\\b${word}\\b\\s*(?:kilos?|kg|pièces?|piece)?\\s*(?:de\\s+|d'\\s*)?)${pat}`, 'i');
+              const regexWordBefore = new RegExp(`(?:\\b${escapeRegExp(word)}\\b\\s*(?:kilos?|kg|pièces?|piece)?\\s*(?:de\\s+|d'\\s*)?)${escapedPat}`, 'i');
               if (regexWordBefore.test(lower)) {
                 qty = val;
                 break;
@@ -216,7 +224,7 @@ class VoiceNLUEngine {
           }
 
           // Regex 3 : nombre après : "lavage repassage 4 kilos", "costumes ñaar"
-          const regexNumericAfter = new RegExp(`${pat}\\s*(?:de\\s+|d'\\s*)?(\\d+(?:[.,]\\d+)?)\\s*(?:kilos?|kg)?`, 'i');
+          const regexNumericAfter = new RegExp(`${escapedPat}\\s*(?:de\\s+|d'\\s*)?(\\d+(?:[.,]\\d+)?)\\s*(?:kilos?|kg)?`, 'i');
           const m3 = lower.match(regexNumericAfter);
           if (m3 && m3[1]) {
             qty = parseFloat(m3[1].replace(',', '.'));
